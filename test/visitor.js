@@ -110,11 +110,20 @@ describe("inmemory visitor", () => {
       expect(f({A: [{a:1},{a:2}]})).to.equal(false)
   })
 
+  it("expression: A/any(i: i/a eq 1)", () => {
+      expect(f({A: [{a:1},{a:2}]})).to.equal(true)
+      expect(f({A: [{a:3},{a:2}]})).to.equal(false)
+  })
+
   it("expression: substring(A, 2) eq 'BC'", () => {
       expect(f({A:'ABC'})).to.equal(true)
   })
 
-  it("expression: substring('ABC', D) eq 'BC'", () => {
+  xit("expression: substring('ABC', D) eq 'BC'", () => {
       expect(f({D:2})).to.equal(true)
+  })
+
+  xit("expression: substring('ABC', 2) eq 'BC'", () => {
+      expect(f({})).to.equal(true)
   })
 })
