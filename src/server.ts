@@ -14,6 +14,15 @@ app.get("/api/products", (req: Request, res: Response) => {
   })
 })
 
+app.get("/odata/products", (req: Request, res: Response) => {
+  const visitor = new Visitor()
+  const filter = visitor.buildFilterFunction(req.query.$filter)
+
+  res.json({
+    "result": filter.toString()
+  })
+})
+
 app.listen(port, () => {
     console.log(`service listing in ${port}`);
 })

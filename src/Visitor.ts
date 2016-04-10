@@ -1,34 +1,46 @@
 import { TokenType, Token } from '../node_modules/odata-v4-parser/lib/lexer'
 import { Parser } from '../node_modules/odata-v4-parser/lib/parser'
+
 var p = new Parser()
 
 
-export class Visitor {
+interface VisitorFuncRes {
+  (a: any): any
+}
 
-  constructor() {
+interface VisitorFunc {
+  (node: Token, context: any): VisitorFuncRes | Array<VisitorFuncRes>
+}
+
+interface VisitorMap {
+  [key: string]: VisitorFunc
+}
+
+export const ODataMethodMap = {
+  round: v => Math.round(v),
+  indexof: (v, i) => v.indexOf && v.indexOf(i),
+  substring: (v, i) => v.substr(i - 1)
+}
+
+export class Visitor implements VisitorMap {
+  [k: string]: VisitorFunc;
+
+
+  static buildFilterFunction(expression: string) {
+    return new Visitor().Visit(p.filter(expression), {})
 
   }
 
-  buildAst(expression: string) {
+  static buildAst(expression: string) {
     return p.filter(expression)
   }
 
   Visit(node: Token, context: any) {
-    //console.log("Visiting: ",node, node.type)
+    //console.log("Visiting: ", node.type)
     switch (node.type) {
-      case TokenType.EqualsExpression: return this.VisitEqualsExpression(node, context)
-      case TokenType.Filter: return this.VisitFilter(node, context)
-      case TokenType.Literal: return this.VisitLiteral(node, context)
-      case TokenType.ODataIdentifier: return this.VisitODataIdentifier(node, context)
-      case TokenType.OrExpression: return this.VisitOrExpression(node, context)
-      case TokenType.CountExpression: return this.VisitCountExpression(node, context)
-      case TokenType.GreaterThanExpression: return this.VisitGreaterThanExpression(node, context)
-      case TokenType.LesserThanExpression: return this.VisitLesserThanExpression(node, context)
-      case TokenType.AndExpression: return this.VisitAndExpression(node, context)
-      case TokenType.AddExpression: return this.VisitAddExpression(node, context)
-      case TokenType.BoolParenExpression: return this.VisitBoolParenExpression(node, context)
+      //these are auto handled by visitor bubbling
       case TokenType.CollectionPathExpression:
-      case TokenType.FirstMemberExpression:
+      case TokenType.LambdaPredicateExpression:
       case TokenType.MemberExpression:
       case TokenType.PropertyPathExpression:
       case TokenType.SingleNavigationExpression:
@@ -36,23 +48,52 @@ export class Visitor {
       case undefined:
         break;
       default:
-        console.warn("No visitor for: " + node.type)
+        const fun = this[`Visit${node.type}`]
+        if (fun) {
+          return fun.call(this, node, context)
+        }
+        console.log(`Unhandled node type, falling back: ${node.type}`)
     }
     return this.Visit(node.value, context)
   }
 
+  //todo fix AST so that we dont need this
+  private VisitFirstMemberExpression(node: Token, context: any)  {
+    if (Array.isArray(node.value)) {
+      const [current, next] = node.value
+      return this.VisitODataIdentifier(<Token>{value:{ current, next}}, context)
+    }
+    return this.Visit(node.value, context)
+  }
 
   private VisitBinaryExpression(node: Token, context: any) {
     return [this.Visit(node.value.left, context), this.Visit(node.value.right, context)]
   }
+
   protected VisitBoolParenExpression(node: Token, context: any) {
     var inner = this.Visit(node.value, context)
     return a => !!inner(a)
   }
 
+  protected VisitLambdaVariableExpression(node: Token, context: any) {
+    return a => a
+  }
+
   protected VisitCountExpression(node: Token, context: any) {
     return a => (a && a.length) || 0
   }
+
+  protected VisitAllExpression(node: Token, context: any) {
+    const predicate = this.Visit(node.value.predicate, context)
+    return a => a.every && a.every(predicate)
+  }
+
+  protected VisitAnyExpression(node: Token, context: any) {
+    const predicate = this.Visit(node.value.predicate, context)
+    return a => a.some && a.some(predicate)
+  }
+
+
   protected VisitFilter(node: Token, context: any) {
     var predicate = this.Visit(node.value, context)
     return a => !!predicate(a)
@@ -73,7 +114,9 @@ export class Visitor {
     return a => left(a) < right(a)
   }
 
-
+  protected VisitImplicitVariableExpression(node: Token, context: any) {
+    return a => a
+  }
   protected VisitAndExpression(node: Token, context: any) {
     var [left, right] = this.VisitBinaryExpression(node, context)
     return a => left(a) && right(a)
@@ -85,20 +128,25 @@ export class Visitor {
   }
 
 
-  protected VisitLiteral(node: Token, context: any) {
-    let convert
+  protected getLiteral(node: Token): any {
     switch(node.value) {
-      case "Edm.SByte": convert = v => parseInt(v); break;
-      case "Edm.String":
-        convert = v => v.replace(/'/g,'');
-        break;
+      case "Edm.SByte":     return  parseInt(node.raw)
+      case "Edm.Boolean":   return  node.raw === "true"
+      case "Edm.String":    return  node.raw.replace(/'/g,'')
       default:
         console.log("unknown value type:" + node.value)
-        break;
     }
-    return a => convert(node.raw)
+    return node.raw
+  }
+  protected VisitLiteral(node: Token, context: any) {
+    return a => this.getLiteral(node)
   }
 
+  protected VisitMethodCallExpression(node: Token, context: any) {
+    var method = ODataMethodMap[node.value.method]
+    var params = node.value.parameters.map(p => this.Visit(p, context))
+    return a => method.apply(this, params.map(p => p(a)))
+  }
 
   protected VisitODataIdentifier(node: Token, context: any) {
     if (node.value.name) {
@@ -110,14 +158,10 @@ export class Visitor {
   }
 
   protected VisitOrExpression(node: Token, context: any) {
-    var left = this.Visit(node.value.left, context)
-    var right = this.Visit(node.value.right, context)
+    var [left, right] = this.VisitBinaryExpression(node, context)
     return a => left(a) || right(a)
   }
 
-  VisitUnknown(node, context) {
-
-  }
 
 }
 
