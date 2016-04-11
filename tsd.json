@@ -5,29 +5,20 @@
   "path": "typings",
   "bundle": "typings/tsd.d.ts",
   "installed": {
-    "express/express.d.ts": {
-      "commit": "ec9eb4b28c74665a602c22db3457f0a76fa0fa23"
-    },
-    "mime/mime.d.ts": {
-      "commit": "ec9eb4b28c74665a602c22db3457f0a76fa0fa23"
-    },
-    "node/node.d.ts": {
-      "commit": "ec9eb4b28c74665a602c22db3457f0a76fa0fa23"
+    "serve-static/serve-static.d.ts": {
+      "commit": "237339b0238845b027431280c72dc663ca534132"
     },
     "express-serve-static-core/express-serve-static-core.d.ts": {
-      "commit": "ec9eb4b28c74665a602c22db3457f0a76fa0fa23"
+      "commit": "237339b0238845b027431280c72dc663ca534132"
     },
-    "serve-static/serve-static.d.ts": {
-      "commit": "ec9eb4b28c74665a602c22db3457f0a76fa0fa23"
+    "express/express.d.ts": {
+      "commit": "237339b0238845b027431280c72dc663ca534132"
     },
-    "mocha/mocha.d.ts": {
-      "commit": "ec9eb4b28c74665a602c22db3457f0a76fa0fa23"
+    "mime/mime.d.ts": {
+      "commit": "237339b0238845b027431280c72dc663ca534132"
     },
-    "assertion-error/assertion-error.d.ts": {
-      "commit": "ec9eb4b28c74665a602c22db3457f0a76fa0fa23"
-    },
-    "chai/chai.d.ts": {
-      "commit": "ec9eb4b28c74665a602c22db3457f0a76fa0fa23"
+    "node/node.d.ts": {
+      "commit": "237339b0238845b027431280c72dc663ca534132"
     }
   }
 }

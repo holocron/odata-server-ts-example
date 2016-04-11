@@ -2,8 +2,9 @@
   "compilerOptions": {
     "module": "commonjs",
     "target": "es5",
-    "moduleResolution": "node",
-    "rootDir": "src",
-    "outDir": "lib"
-  }
+    "moduleResolution": "node"
+  },
+  "files": [
+    "server.ts"
+  ]
 }
